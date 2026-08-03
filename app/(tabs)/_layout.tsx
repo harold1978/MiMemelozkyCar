@@ -31,7 +31,9 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "DASHBOARD",
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          tabBarIcon: ({ color }) => (
+            <TabBarIcon name="database" color={color} />
+          ),
           headerRight: () => (
             <Link href="/modal" asChild>
               <Pressable>
@@ -49,10 +51,26 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="two"
+        name="FuelScreen"
         options={{
-          title: "Tab Two",
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          title: "COMBUSTIBLE",
+          tabBarIcon: ({ color }) => (
+            <TabBarIcon name="battery-half" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="MaintenanceScreen"
+        options={{
+          title: "MAMNTENIMIENTOS",
+          tabBarIcon: ({ color }) => <TabBarIcon name="wrench" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="VehiclesScreen"
+        options={{
+          title: "VEHICULOS",
+          tabBarIcon: ({ color }) => <TabBarIcon name="car" color={color} />,
         }}
       />
     </Tabs>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { RefreshControl, ScrollView, Text, View } from "react-native";
+import FuelChart from "../../components/FuelChart";
 import {
   getFuelLogs,
   getMaintenanceLogs,
@@ -10,7 +11,7 @@ import { FuelLog, MaintenanceLog } from "../../types/Tipos";
 export default function DashboardScreen() {
   const [fuelLogs, setFuelLogs] = useState<FuelLog[]>([]);
   const [maintenances, setMaintenances] = useState<MaintenanceLog[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -20,7 +21,7 @@ export default function DashboardScreen() {
       setFuelLogs(fuels);
       setMaintenances(maints);
     } catch (e) {
-      console.error(e);
+      console.error("Error al cargar datos del Dashboard:", e);
     } finally {
       setLoading(false);
     }
@@ -30,9 +31,10 @@ export default function DashboardScreen() {
     fetchData();
   }, []);
 
-  // Cálculos del mes actual
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
+  // Métricas del Mes Actual
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
 
   const monthlyFuelCost = fuelLogs
     .filter((log) => {
@@ -44,17 +46,14 @@ export default function DashboardScreen() {
   const monthlyMaintCost = maintenances
     .filter((log) => {
       const d = new Date(log.date);
-      return (
-        d.getMonth() === currentMonth &&
-        d.getFullYear() === currentYear &&
-        log.status == "Completed"
-      );
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     })
     .reduce((acc, curr) => acc + curr.cost, 0);
 
-  const pendingMaintenances = maintenances.filter(
-    (m) => m.status === "Pending",
-  );
+  // Mantenimientos pendientes (filtrados por estado y ordenados por kilometraje)
+  const pendingMaintenances = maintenances
+    .filter((m) => m.status === "Pending")
+    .sort((a, b) => (a.nextDueMileage || 0) - (b.nextDueMileage || 0));
 
   return (
     <ScrollView
@@ -65,6 +64,7 @@ export default function DashboardScreen() {
     >
       <Text style={globalStyles.title}>Resumen del Mes</Text>
 
+      {/* Tarjetas de Métricas Rápidas */}
       <View style={globalStyles.row}>
         <View style={[globalStyles.card, { flex: 0.48 }]}>
           <Text style={globalStyles.subtitle}>Combustible</Text>
@@ -72,39 +72,56 @@ export default function DashboardScreen() {
             ₡{monthlyFuelCost.toLocaleString()}
           </Text>
         </View>
+
         <View style={[globalStyles.card, { flex: 0.48 }]}>
           <Text style={globalStyles.subtitle}>Mantenimiento</Text>
-          <Text style={globalStyles.statValue}>
+          <Text style={[globalStyles.statValue, { color: colors.accent }]}>
             ₡{monthlyMaintCost.toLocaleString()}
           </Text>
         </View>
       </View>
 
+      {/* Gráfico de Barras Histórico */}
+      <FuelChart fuelLogs={fuelLogs} />
+
+      {/* Sección de Próximos Servicios por Kilometraje */}
       <Text style={[globalStyles.title, { marginTop: 16 }]}>
-        Próximos Mantenimientos
+        Próximos Servicios (Por KM)
       </Text>
+
       {pendingMaintenances.length === 0 ? (
         <View style={globalStyles.card}>
           <Text style={globalStyles.subtitle}>
-            No hay mantenimientos pendientes.
+            No hay servicios pendientes agendados.
           </Text>
         </View>
       ) : (
         pendingMaintenances.map((item) => (
-          <View key={item.id} style={globalStyles.card}>
+          <View
+            key={item.id || Math.random().toString()}
+            style={globalStyles.card}
+          >
             <View style={globalStyles.row}>
-              <Text style={{ fontWeight: "600", fontSize: 16 }}>
+              <Text
+                style={{ fontWeight: "600", fontSize: 16, color: colors.text }}
+              >
                 {item.title}
               </Text>
               <Text style={{ color: colors.danger, fontWeight: "bold" }}>
                 {item.nextDueMileage
                   ? `${item.nextDueMileage.toLocaleString()} km`
-                  : "Sin definir"}
+                  : "Sin limite"}
               </Text>
             </View>
-            <Text style={globalStyles.subtitle}>
-              Vehículo: {item.vehicleId}
-            </Text>
+
+            <View style={[globalStyles.row, { marginTop: 6 }]}>
+              <Text style={globalStyles.subtitle}>
+                Vehículo: {item.vehicleId}
+              </Text>
+              <Text style={globalStyles.subtitle}>
+                Último KM: {item.mileage.toLocaleString()}
+              </Text>
+            </View>
           </View>
         ))
       )}

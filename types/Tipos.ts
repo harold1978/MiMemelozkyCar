@@ -4,7 +4,7 @@ export interface Vehicle {
   id?: string;
   name: string;
   model: string;
-  plate: string;
+  placa: string;
 }
 
 export interface FuelLog {

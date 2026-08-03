@@ -1,14 +1,14 @@
 import { initializeApp } from "firebase/app";
 import {
-    addDoc,
-    collection,
-    deleteDoc,
-    doc,
-    getDocs,
-    getFirestore,
-    updateDoc,
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  getFirestore,
+  updateDoc,
 } from "firebase/firestore";
-import { FuelLog, MaintenanceLog } from "../types/Tipos";
+import { FuelLog, MaintenanceLog, Vehicle } from "../types/Tipos";
 
 // Reemplaza con las credenciales de tu proyecto en Firebase
 const firebaseConfig = {
@@ -50,4 +50,16 @@ export const getMaintenanceLogs = async (): Promise<MaintenanceLog[]> => {
   return snapshot.docs.map(
     (doc) => ({ id: doc.id, ...doc.data() }) as MaintenanceLog,
   );
+};
+
+// --- CRUD VEHÍCULOS ---
+export const addVehicle = async (vehicle: Vehicle) =>
+  addDoc(collection(db, "vehicles"), vehicle);
+export const updateVehicle = async (id: string, vehicle: Partial<Vehicle>) =>
+  updateDoc(doc(db, "vehicles", id), vehicle);
+export const deleteVehicle = async (id: string) =>
+  deleteDoc(doc(db, "vehicles", id));
+export const getVehicles = async (): Promise<Vehicle[]> => {
+  const snapshot = await getDocs(collection(db, "vehicles"));
+  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Vehicle);
 };

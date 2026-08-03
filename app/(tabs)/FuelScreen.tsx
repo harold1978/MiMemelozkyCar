@@ -1,3 +1,4 @@
+import { Picker } from "@react-native-picker/picker";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -14,10 +15,11 @@ import {
   addFuelLog,
   deleteFuelLog,
   getFuelLogs,
+  getVehicles,
   updateFuelLog,
 } from "../../services/ServicioFirestore";
 import { colors, globalStyles } from "../../styles/Styles";
-import { FuelLog } from "../../types/Tipos";
+import { FuelLog, Vehicle } from "../../types/Tipos";
 
 export default function FuelScreen() {
   const [logs, setLogs] = useState<FuelLog[]>([]);
@@ -26,14 +28,27 @@ export default function FuelScreen() {
   const [selectedLog, setSelectedLog] = useState<FuelLog | null>(null);
 
   // Campos del Formulario
-  const [vehicleId, setVehicleId] = useState<string>("CRV-2006"); // Identificador por defecto
+  const [vehicleId, setVehicleId] = useState<string>(""); // Identificador por defecto
   const [date, setDate] = useState<string>("");
   const [mileage, setMileage] = useState<string>("");
   const [liters, setLiters] = useState<string>("");
   const [totalCost, setTotalCost] = useState<string>("");
+  // Dentro del componente de tu pantalla:
+  const [vehiclesList, setVehiclesList] = useState<Vehicle[]>([]);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
 
   useEffect(() => {
     loadFuelLogs();
+  }, []);
+  useEffect(() => {
+    const fetchVehicles = async () => {
+      const list = await getVehicles();
+      setVehiclesList(list);
+      if (list.length > 0 && !selectedVehicleId) {
+        setSelectedVehicleId(list[0].name); // O usa list[0].id según prefieras
+      }
+    };
+    fetchVehicles();
   }, []);
 
   const loadFuelLogs = async () => {
@@ -62,7 +77,7 @@ export default function FuelScreen() {
       setTotalCost(log.totalCost.toString());
     } else {
       setSelectedLog(null);
-      setVehicleId("CRV-2006");
+      setVehicleId("");
       setDate(new Date().toISOString().split("T")[0]); // Formato YYYY-MM-DD
       setMileage("");
       setLiters("");
@@ -202,12 +217,23 @@ export default function FuelScreen() {
               {selectedLog ? "Editar Registro" : "Nuevo Registro"}
             </Text>
 
-            <TextInput
+            <Picker
+              selectedValue={setVehicleId}
+              onValueChange={(itemValue) => setVehicleId(itemValue.toString)}
               style={globalStyles.input}
-              placeholder="Identificador Vehículo (ej. CRV-2006)"
-              value={vehicleId}
-              onChangeText={setVehicleId}
-            />
+            >
+              {vehiclesList.length === 0 ? (
+                <Picker.Item label="Cargando vehículos..." value="" />
+              ) : (
+                vehiclesList.map((v) => (
+                  <Picker.Item
+                    key={v.id || v.placa}
+                    label={`${v.name} (${v.placa})`}
+                    value={v.name}
+                  />
+                ))
+              )}
+            </Picker>
 
             <TextInput
               style={globalStyles.input}
