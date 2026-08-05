@@ -14,6 +14,7 @@ export interface FuelLog {
   mileage: number; // Kilometraje actual
   liters: number;
   totalCost: number;
+  kmAnterior: number;
 }
 
 export interface MaintenanceLog {

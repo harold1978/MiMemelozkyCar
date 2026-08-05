@@ -6,7 +6,11 @@ import {
   doc,
   getDocs,
   getFirestore,
+  limit,
+  orderBy,
+  query,
   updateDoc,
+  where,
 } from "firebase/firestore";
 import { FuelLog, MaintenanceLog, Vehicle } from "../types/Tipos";
 
@@ -23,6 +27,31 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+
+// Obtiene el último registro de combustible de un vehículo específico
+export const getLastFuelLog = async (
+  vehicleId: string,
+): Promise<FuelLog | null> => {
+  console.log("holaaaaa:", vehicleId);
+  try {
+    const q = query(
+      collection(db, "fuelLogs"),
+      where("vehicleId", "==", vehicleId),
+      orderBy("date", "desc"),
+      limit(1),
+    );
+    const snapshot = await getDocs(q);
+    if (!snapshot.empty) {
+      const doc = snapshot.docs[0];
+      console.log(snapshot);
+      return { id: doc.id, ...doc.data() } as FuelLog;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error al obtener último kilometraje:", error);
+    return null;
+  }
+};
 
 // --- CRUD COMBUSTIBLE ---
 export const addFuelLog = async (log: FuelLog) =>

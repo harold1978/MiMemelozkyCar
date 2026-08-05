@@ -15,6 +15,7 @@ import {
   addFuelLog,
   deleteFuelLog,
   getFuelLogs,
+  getLastFuelLog,
   getVehicles,
   updateFuelLog,
 } from "../../services/ServicioFirestore";
@@ -33,33 +34,44 @@ export default function FuelScreen() {
   const [mileage, setMileage] = useState<string>("");
   const [liters, setLiters] = useState<string>("");
   const [totalCost, setTotalCost] = useState<string>("");
-  // Dentro del componente de tu pantalla:
   const [vehiclesList, setVehiclesList] = useState<Vehicle[]>([]);
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
 
   useEffect(() => {
     loadFuelLogs();
   }, []);
+
   useEffect(() => {
     const fetchVehicles = async () => {
       const list = await getVehicles();
       setVehiclesList(list);
-      if (list.length > 0 && !selectedVehicleId) {
-        setSelectedVehicleId(list[0].name); // O usa list[0].id según prefieras
+      if (list.length > 0 && !vehicleId) {
+        setVehicleId(list[0].id);
       }
     };
     fetchVehicles();
-  }, []);
+  }, []); // eliminar vehicleId como dependencia
+
+  const computeKmAnterior = (logList: FuelLog[]) => {
+    const ordered = [...logList].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    );
+    const lastMileageByVehicle: Record<string, number> = {};
+    return ordered.map((log) => {
+      const kmAnterior = lastMileageByVehicle[log.vehicleId] ?? 0;
+      lastMileageByVehicle[log.vehicleId] = log.mileage;
+      return { ...log, kmAnterior };
+    });
+  };
 
   const loadFuelLogs = async () => {
     setLoading(true);
     try {
       const data = await getFuelLogs();
-      // Ordenar del más reciente al más antiguo
-      data.sort(
+      const logsWithKm = computeKmAnterior(data);
+      logsWithKm.sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
       );
-      setLogs(data);
+      setLogs(logsWithKm);
     } catch (error) {
       console.error("Error al cargar registros:", error);
     } finally {
@@ -77,8 +89,8 @@ export default function FuelScreen() {
       setTotalCost(log.totalCost.toString());
     } else {
       setSelectedLog(null);
-      setVehicleId("");
-      setDate(new Date().toISOString().split("T")[0]); // Formato YYYY-MM-DD
+      setVehicleId(vehiclesList[0]?.id ?? "");
+      setDate(new Date().toISOString().split("T")[0]);
       setMileage("");
       setLiters("");
       setTotalCost("");
@@ -87,18 +99,20 @@ export default function FuelScreen() {
   };
 
   const handleSave = async () => {
-    if (!mileage || !liters || !totalCost || !date) {
+    if (!vehicleId || !mileage || !liters || !totalCost || !date) {
       const msg = "Por favor complete todos los campos obligatorios.";
       Platform.OS === "web" ? alert(msg) : Alert.alert("Atención", msg);
       return;
     }
 
+    const lastLog = await getLastFuelLog(vehicleId);
     const payload: FuelLog = {
       vehicleId,
       date,
       mileage: parseFloat(mileage),
       liters: parseFloat(liters),
       totalCost: parseFloat(totalCost),
+      kmAnterior: lastLog ? lastLog.mileage : 0,
     };
 
     try {
@@ -140,7 +154,6 @@ export default function FuelScreen() {
 
   return (
     <View style={globalStyles.container}>
-      {/* Botón Nuevo Registro */}
       <TouchableOpacity
         style={[globalStyles.button, { marginBottom: 16 }]}
         onPress={() => handleOpenModal()}
@@ -148,13 +161,12 @@ export default function FuelScreen() {
         <Text style={globalStyles.buttonText}>+ Registrar Recarga</Text>
       </TouchableOpacity>
 
-      {/* Lista de Registros */}
       {loading ? (
         <ActivityIndicator size="large" color={colors.secondary} />
       ) : (
         <FlatList
           data={logs}
-          keyExtractor={(item) => item.id || Math.random().toString()}
+          keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={globalStyles.card}>
               <View style={globalStyles.row}>
@@ -168,13 +180,17 @@ export default function FuelScreen() {
                 <Text style={globalStyles.subtitle}>
                   KM: {item.mileage.toLocaleString()}
                 </Text>
+
+                <Text style={globalStyles.subtitle}>
+                  KM ANTERIOR: {item.kmAnterior ?? 0}
+                </Text>
+
                 <Text style={globalStyles.subtitle}>Litros: {item.liters}</Text>
                 <Text style={{ fontWeight: "bold", color: colors.accent }}>
                   ₡{item.totalCost.toLocaleString()}
                 </Text>
               </View>
 
-              {/* Botones Modificar y Eliminar */}
               <View style={[globalStyles.row, { marginTop: 8 }]}>
                 <TouchableOpacity
                   style={[
@@ -202,7 +218,6 @@ export default function FuelScreen() {
         />
       )}
 
-      {/* Modal Formulario (Crear / Editar) */}
       <Modal visible={modalVisible} animationType="slide" transparent={true}>
         <View
           style={{
@@ -218,8 +233,8 @@ export default function FuelScreen() {
             </Text>
 
             <Picker
-              selectedValue={setVehicleId}
-              onValueChange={(itemValue) => setVehicleId(itemValue.toString)}
+              selectedValue={vehicleId}
+              onValueChange={(itemValue) => setVehicleId(itemValue.toString())}
               style={globalStyles.input}
             >
               {vehiclesList.length === 0 ? (
@@ -229,7 +244,7 @@ export default function FuelScreen() {
                   <Picker.Item
                     key={v.id || v.placa}
                     label={`${v.name} (${v.placa})`}
-                    value={v.name}
+                    value={v.id}
                   />
                 ))
               )}
