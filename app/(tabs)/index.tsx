@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   RefreshControl,
   ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -51,24 +50,35 @@ export default function DashboardScreen() {
   }, []);
 
   // --- LÓGICA DE FILTRADO ---
+  const matchesTimeRange = (value: string, now: Date) => {
+    const logDate = new Date(value);
+
+    if (Number.isNaN(logDate.getTime())) {
+      return false;
+    }
+
+    if (selectedTimeRange === "MONTH") {
+      return (
+        logDate.getMonth() === now.getMonth() &&
+        logDate.getFullYear() === now.getFullYear()
+      );
+    }
+
+    if (selectedTimeRange === "YEAR") {
+      return logDate.getFullYear() === now.getFullYear();
+    }
+
+    return true;
+  };
+
   const filteredFuel = useMemo(() => {
     const now = new Date();
     return fuelLogs.filter((log) => {
       const matchVehicle =
         selectedVehicle === "ALL" || log.vehicleId === selectedVehicle;
-      const logDate = new Date(log.date);
 
       if (!matchVehicle) return false;
-
-      if (selectedTimeRange === "MONTH") {
-        return (
-          logDate.getMonth() === now.getMonth() &&
-          logDate.getFullYear() === now.getFullYear()
-        );
-      } else if (selectedTimeRange === "YEAR") {
-        return logDate.getFullYear() === now.getFullYear();
-      }
-      return true; // 'ALL'
+      return matchesTimeRange(log.date, now);
     });
   }, [fuelLogs, selectedVehicle, selectedTimeRange]);
 
@@ -77,21 +87,22 @@ export default function DashboardScreen() {
     return maintenances.filter((log) => {
       const matchVehicle =
         selectedVehicle === "ALL" || log.vehicleId === selectedVehicle;
-      const logDate = new Date(log.date);
 
       if (!matchVehicle) return false;
-
-      if (selectedTimeRange === "MONTH") {
-        return (
-          logDate.getMonth() === now.getMonth() &&
-          logDate.getFullYear() === now.getFullYear()
-        );
-      } else if (selectedTimeRange === "YEAR") {
-        return logDate.getFullYear() === now.getFullYear();
-      }
-      return true;
+      return matchesTimeRange(log.date, now);
     });
   }, [maintenances, selectedVehicle, selectedTimeRange]);
+
+  const getLogMileage = (log: FuelLog) => {
+    const values = [log.mileage, log.kmActual];
+    for (const value of values) {
+      const numericValue = Number(value);
+      if (Number.isFinite(numericValue) && numericValue > 0) {
+        return numericValue;
+      }
+    }
+    return 0;
+  };
 
   // --- CÁLCULO DE INDICADORES (KPIs) ---
   const kpis = useMemo(() => {
@@ -122,8 +133,8 @@ export default function DashboardScreen() {
         (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
       );
       for (let i = 1; i < arr.length; i++) {
-        const prev = Number(arr[i - 1].mileage || 0);
-        const curr = Number(arr[i].mileage || 0);
+        const prev = getLogMileage(arr[i - 1]);
+        const curr = getLogMileage(arr[i]);
         if (curr > prev) totalKmTraveled += curr - prev;
       }
     });
@@ -132,15 +143,14 @@ export default function DashboardScreen() {
       (acc, curr) => acc + (curr.liters || 0),
       0,
     );
+    console.log("Total Km:", totalKmTraveled, "Total Liters:", totalLiters);
     const avgEfficiency =
-      totalLiters > 0 ? (totalKmTraveled / totalLiters).toFixed(2) : "0";
+      totalLiters > 0
+        ? ((totalKmTraveled * 1.60934) / totalLiters).toFixed(2)
+        : "0";
 
     // Servicios pendientes de la selección
-    const pendingServices = maintenances.filter(
-      (m) =>
-        m.status === "Pending" &&
-        (selectedVehicle === "ALL" || m.vehicleId === selectedVehicle),
-    );
+    const pendingServices = filteredMaint.filter((m) => m.status === "Pending");
 
     return {
       totalFuelCost,
@@ -153,7 +163,13 @@ export default function DashboardScreen() {
         (a, b) => (a.nextDueMileage || 0) - (b.nextDueMileage || 0),
       ),
     };
-  }, [filteredFuel, filteredMaint, maintenances, selectedVehicle]);
+  }, [filteredFuel, filteredMaint, selectedVehicle]);
+
+  const getVehicleDisplayName = (vehicleId: string) => {
+    const vehicle = vehicles.find((v) => v.id === vehicleId);
+    return vehicle?.name || vehicle?.placa || "Vehículo sin nombre";
+  };
+
   return (
     <ScrollView
       style={globalStyles.container}
@@ -162,9 +178,9 @@ export default function DashboardScreen() {
       }
     >
       {/* 1. SECCIÓN DE FILTROS */}
-      <View style={localStyles.filterContainer}>
+      <View style={globalStyles.filterContainer}>
         {/* Filtro por Rango Temporal */}
-        <Text style={localStyles.filterLabel}>Periodo:</Text>
+        <Text style={globalStyles.filterLabel}>Periodo:</Text>
         <View style={globalStyles.row}>
           {[
             { id: "MONTH", label: "Este Mes" },
@@ -174,15 +190,19 @@ export default function DashboardScreen() {
             <TouchableOpacity
               key={range.id}
               style={[
-                localStyles.chip,
-                selectedTimeRange === range.id && localStyles.chipActive,
+                globalStyles.chip,
+                selectedTimeRange === range.id && globalStyles.chipActive,
+                selectedTimeRange === range.id && {
+                  borderWidth: 1.5,
+                  borderColor: colors.primary,
+                },
               ]}
               onPress={() => setSelectedTimeRange(range.id as any)}
             >
               <Text
                 style={[
-                  localStyles.chipText,
-                  selectedTimeRange === range.id && localStyles.chipTextActive,
+                  globalStyles.chipText,
+                  selectedTimeRange === range.id && globalStyles.chipTextActive,
                 ]}
               >
                 {range.label}
@@ -194,7 +214,7 @@ export default function DashboardScreen() {
         {/* Filtro por Vehículo */}
         {vehicles.length > 0 && (
           <View style={{ marginTop: 10 }}>
-            <Text style={localStyles.filterLabel}>Vehículo:</Text>
+            <Text style={globalStyles.filterLabel}>Vehículo:</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -202,15 +222,15 @@ export default function DashboardScreen() {
             >
               <TouchableOpacity
                 style={[
-                  localStyles.chip,
-                  selectedVehicle === "ALL" && localStyles.chipActive,
+                  globalStyles.chip,
+                  selectedVehicle === "ALL" && globalStyles.chipActive,
                 ]}
                 onPress={() => setSelectedVehicle("ALL")}
               >
                 <Text
                   style={[
-                    localStyles.chipText,
-                    selectedVehicle === "ALL" && localStyles.chipTextActive,
+                    globalStyles.chipText,
+                    selectedVehicle === "ALL" && globalStyles.chipTextActive,
                   ]}
                 >
                   Todos
@@ -221,15 +241,19 @@ export default function DashboardScreen() {
                 <TouchableOpacity
                   key={v.id}
                   style={[
-                    localStyles.chip,
-                    selectedVehicle === v.id && localStyles.chipActive,
+                    globalStyles.chip,
+                    selectedVehicle === v.id && globalStyles.chipActive,
+                    selectedVehicle === v.id && {
+                      borderWidth: 1.5,
+                      borderColor: colors.primary,
+                    },
                   ]}
-                  onPress={() => setSelectedVehicle(v.id)}
+                  onPress={() => setSelectedVehicle(v.id ?? "ALL")}
                 >
                   <Text
                     style={[
-                      localStyles.chipText,
-                      selectedVehicle === v.id && localStyles.chipTextActive,
+                      globalStyles.chipText,
+                      selectedVehicle === v.id && globalStyles.chipTextActive,
                     ]}
                   >
                     {v.name || v.placa}
@@ -296,8 +320,8 @@ export default function DashboardScreen() {
       {/* 4. MANTENIMIENTOS PENDIENTES */}
       <View style={[globalStyles.row, { marginTop: 16 }]}>
         <Text style={globalStyles.title}>Alertas de Servicio</Text>
-        <View style={localStyles.badge}>
-          <Text style={localStyles.badgeText}>{kpis.pendingCount}</Text>
+        <View style={globalStyles.badge}>
+          <Text style={globalStyles.badgeText}>{kpis.pendingCount}</Text>
         </View>
       </View>
 
@@ -328,7 +352,7 @@ export default function DashboardScreen() {
 
             <View style={[globalStyles.row, { marginTop: 6 }]}>
               <Text style={globalStyles.subtitle}>
-                Vehículo: {item.vehicleId}
+                Vehículo: {getVehicleDisplayName(item.vehicleId)}
               </Text>
               <Text style={globalStyles.subtitle}>
                 Registrado a: {item.mileage.toLocaleString()} km
@@ -340,49 +364,3 @@ export default function DashboardScreen() {
     </ScrollView>
   );
 }
-
-const localStyles = StyleSheet.create({
-  filterContainer: {
-    marginBottom: 16,
-    padding: 12,
-    backgroundColor: colors.card,
-    borderRadius: 12,
-  },
-  filterLabel: {
-    fontSize: 12,
-    fontWeight: "bold",
-    color: colors.subtext,
-    marginBottom: 6,
-    textTransform: "uppercase",
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: "#F1F5F9",
-    marginRight: 8,
-  },
-  chipActive: {
-    backgroundColor: colors.secondary,
-  },
-  chipText: {
-    fontSize: 13,
-    color: colors.text,
-    fontWeight: "500",
-  },
-  chipTextActive: {
-    color: "#FFFFFF",
-    fontWeight: "bold",
-  },
-  badge: {
-    backgroundColor: colors.accent,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-  },
-  badgeText: {
-    color: "#FFF",
-    fontWeight: "bold",
-    fontSize: 12,
-  },
-});

@@ -11,7 +11,8 @@ export interface FuelLog {
   id?: string;
   vehicleId: string;
   date: string; // ISO string YYYY-MM-DD
-  mileage: number; // Kilometraje actual
+  mileage: number; // lillas actual
+  kmActual: number; // Kilometraje actual/al momento del registro
   liters: number;
   totalCost: number;
   kmAnterior: number;

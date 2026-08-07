@@ -4,6 +4,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   getFirestore,
   limit,
@@ -91,4 +92,17 @@ export const deleteVehicle = async (id: string) =>
 export const getVehicles = async (): Promise<Vehicle[]> => {
   const snapshot = await getDocs(collection(db, "vehicles"));
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Vehicle);
+};
+
+export const getVehicleById = async (id: string): Promise<Vehicle | null> => {
+  try {
+    const docRef = doc(db, "vehicles", id);
+    const docSnap = await getDoc(docRef);
+    return docSnap.exists()
+      ? ({ id: docSnap.id, ...docSnap.data() } as Vehicle)
+      : null;
+  } catch (error) {
+    console.error("Error al obtener vehículo por ID:", error);
+    return null;
+  }
 };

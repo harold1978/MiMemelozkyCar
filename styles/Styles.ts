@@ -83,4 +83,48 @@ export const globalStyles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
+
+  filterContainer: {
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+  },
+  filterLabel: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: colors.subtext,
+    marginBottom: 6,
+    textTransform: "uppercase",
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: "#F1F5F9",
+    marginRight: 8,
+  },
+  chipActive: {
+    backgroundColor: colors.secondary,
+  },
+  chipText: {
+    fontSize: 13,
+    color: colors.text,
+    fontWeight: "500",
+  },
+  chipTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "bold",
+  },
+  badge: {
+    backgroundColor: colors.accent,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  badgeText: {
+    color: "#FFF",
+    fontWeight: "bold",
+    fontSize: 12,
+  },
 });

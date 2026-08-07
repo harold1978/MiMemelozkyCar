@@ -109,10 +109,11 @@ export default function FuelScreen() {
     const payload: FuelLog = {
       vehicleId,
       date,
-      mileage: parseFloat(mileage),
+      mileage: parseFloat(mileage), // Convertir a kilómetros
       liters: parseFloat(liters),
+      kmActual: parseFloat(mileage) * 1.60934, // Convertir a kilómetros
       totalCost: parseFloat(totalCost),
-      kmAnterior: lastLog ? lastLog.mileage : 0,
+      kmAnterior: lastLog ? lastLog.kmActual : 0,
     };
 
     try {
